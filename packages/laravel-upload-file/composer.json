@@ -15,7 +15,7 @@
         "symfony/http-foundation": "^5.0.11|^6.0.3"
     },
     "require-dev": {
-        "orchestra/testbench": "^6.6|^7.0",
+        "orchestra/testbench": "^7.6",
         "phpunit/phpunit": "^9.5.13",
         "mockery/mockery": "^1.4.2",
         "vlucas/phpdotenv": "^4.2.2|^5.4.1",
@@ -40,5 +40,15 @@
         {
             "name": "udhuong"
         }
-    ]
+    ],
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Udhuong\\LaravelUploadFile\\UploadFileServiceProvider"
+            ],
+            "aliases": {
+                "FileUploader": "Udhuong\\LaravelUploadFile\\Facades\\FileUploader"
+            }
+        }
+    }
 }

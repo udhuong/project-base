@@ -66,14 +66,14 @@ class UploadFileServiceProvider extends ServiceProvider
      */
     public function registerUploader(): void
     {
-        $this->app->bind('upload_file', function (Container $app) {
+        $this->app->bind('upload_file.uploader', function (Container $app) {
             return new FileUploader(
                 $app['filesystem'],
                 $app['upload_file.source.factory'],
                 $app['config']->get('upload_file')
             );
         });
-        $this->app->alias('upload_file', FileUploader::class);
+        $this->app->alias('upload_file.uploader', FileUploader::class);
     }
 
     /**

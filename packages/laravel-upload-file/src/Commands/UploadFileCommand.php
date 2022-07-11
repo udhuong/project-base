@@ -27,7 +27,7 @@ class UploadFileCommand extends Command
      */
     public function handle()
     {
-        $uploaded = app('upload_file')
+        $uploaded = app('upload_file.uploader')
             ->fromSource(public_path('imgs/btn-menu.png'))
             ->toDestination('s3', 'uploads')
             ->upload();

@@ -1,6 +1,6 @@
 <?php
 
-namespace Udhuong\LaravelUploadFile\Facedes;
+namespace Udhuong\LaravelUploadFile\Facades;
 use Illuminate\Support\Facades\Facade;
 use Udhuong\LaravelUploadFile\FileUploader as Uploader;
 /**
@@ -11,6 +11,9 @@ use Udhuong\LaravelUploadFile\FileUploader as Uploader;
  * @method static Uploader toDestination(string $disk, string $directory)
  * @method static Uploader toDisk(string $disk)
  * @method static Uploader toDirectory(string $directory)
+ * @method static Uploader onDuplicateError()
+ * @method static Uploader onDuplicateIncrement()
+ * @method static Uploader onDuplicateReplace()
  */
 class FileUploader extends Facade
 {
