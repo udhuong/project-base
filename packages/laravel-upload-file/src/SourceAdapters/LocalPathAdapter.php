@@ -81,7 +81,7 @@ class LocalPathAdapter implements SourceAdapterInterface
     /**
      * @inheritdoc
      */
-    public function getStreamResource(): bool
+    public function getStreamResource()
     {
         return fopen($this->path(), 'rb');
     }

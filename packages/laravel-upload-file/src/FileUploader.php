@@ -5,18 +5,27 @@ namespace Udhuong\LaravelUploadFile;
 
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Filesystem\FilesystemManager;
+use stdClass;
 use Udhuong\LaravelUploadFile\Exceptions\MediaUpload\ConfigurationException;
+use Udhuong\LaravelUploadFile\Exceptions\MediaUpload\FileExistsException;
+use Udhuong\LaravelUploadFile\Exceptions\MediaUpload\FileNotFoundException;
+use Udhuong\LaravelUploadFile\Exceptions\MediaUpload\FileNotSupportedException;
+use Udhuong\LaravelUploadFile\Exceptions\MediaUpload\FileSizeException;
 use Udhuong\LaravelUploadFile\Exceptions\MediaUpload\ForbiddenException;
 use Udhuong\LaravelUploadFile\Helpers\File;
 use Udhuong\LaravelUploadFile\SourceAdapters\RawContentAdapter;
 use Udhuong\LaravelUploadFile\SourceAdapters\SourceAdapterFactory;
 use Udhuong\LaravelUploadFile\Traits\HasDuplicate;
+use Udhuong\LaravelUploadFile\Traits\HasFileName;
+use Udhuong\LaravelUploadFile\Traits\HasVerify;
+use Udhuong\LaravelUploadFile\UrlGenerators\UrlGeneratorInterface;
 
 class FileUploader
 {
     use HasDuplicate;
+    use HasVerify;
+    use HasFileName;
 
-    const ON_DUPLICATE_UPDATE = 'update';
     const ON_DUPLICATE_INCREMENT = 'increment';
     const ON_DUPLICATE_ERROR = 'error';
     const ON_DUPLICATE_REPLACE = 'replace';
@@ -35,7 +44,13 @@ class FileUploader
      * Configurations.
      * @var array
      */
-    private array $config;
+    private $config;
+
+    /**
+     * Source adapter.
+     * @var \Udhuong\LaravelUploadFile\SourceAdapters\SourceAdapterInterface
+     */
+    private $source;
 
     /**
      * Name of the filesystem disk.
@@ -62,6 +77,12 @@ class FileUploader
     private bool $hashFilename = false;
 
     /**
+     * Visibility for the new file
+     * @var string
+     */
+    private string $visibility = Filesystem::VISIBILITY_PUBLIC;
+
+    /**
      * Additional options to pass to the filesystem while uploading
      * @var array
      */
@@ -83,12 +104,12 @@ class FileUploader
     /**
      * Set the source for the file.
      *
-     * @param  mixed $source
+     * @param mixed $source
      *
      * @return $this
      * @throws ConfigurationException
      */
-    public function fromSource($source): self
+    public function fromSource(mixed $source): self
     {
         $this->source = $this->factory->create($source);
 
@@ -97,7 +118,7 @@ class FileUploader
 
     /**
      * Set the source for the string data.
-     * @param  string $source
+     * @param string $source
      * @return $this
      */
     public function fromString(string $source): self
@@ -110,8 +131,8 @@ class FileUploader
     /**
      * Set the filesystem disk and relative directory where the file will be saved.
      *
-     * @param  string $disk
-     * @param  string $directory
+     * @param string $disk
+     * @param string $directory
      *
      * @return $this
      * @throws ConfigurationException
@@ -148,5 +169,97 @@ class FileUploader
         $this->directory = File::sanitizePath($directory);
 
         return $this;
+    }
+
+    /**
+     * Process the file upload.
+     *
+     * Validates the source, then stores the file onto the disk and creates and stores a new Media instance.
+     *
+     * @return array
+     * @throws ConfigurationException
+     * @throws FileExistsException
+     * @throws FileNotFoundException
+     * @throws FileNotSupportedException
+     * @throws FileSizeException
+     */
+    public function upload(): array
+    {
+        $this->verifyFile();
+        $file = new stdClass;
+        $file = $this->populateFile($file);
+        $this->verifyDestination($file);
+        $this->writeToDisk($file);
+        $file->path = $this->getDiskPath($file);
+
+        $urlGenerator = $this->getUrlGenerator($file);
+        $file->absolute_path = $urlGenerator->getAbsolutePath();
+        $file->url = $urlGenerator->getUrl();
+        return (array)$file;
+    }
+
+    private function writeToDisk($file): void
+    {
+        $stream = $this->source->getStreamResource();
+
+        if (!is_resource($stream)) {
+            $stream = $this->source->contents();
+        }
+        $this->filesystem->disk($file->disk)
+            ->put(
+                $this->getDiskPath($file),
+                $stream,
+                $this->getOptions()
+            );
+
+        if (is_resource($stream)) {
+            fclose($stream);
+        }
+    }
+
+    public function getOptions(): array
+    {
+        $options = $this->options;
+        if (!isset($options['visibility'])) {
+            $options['visibility'] = $this->visibility;
+        }
+        return $options;
+    }
+
+    private function getDiskPath($file)
+    {
+        $basename = $file->filename . '.' . $file->extension;
+        return ltrim(File::joinPathComponents((string)$this->directory, (string)$basename), '/');
+    }
+
+    /**
+     * Validate input and convert to Media attributes
+     * @return object
+     *
+     * @throws ConfigurationException
+     * @throws FileNotFoundException
+     * @throws FileNotSupportedException
+     * @throws FileSizeException
+     */
+    private function populateFile($model)
+    {
+        $model->size = $this->verifyFileSize($this->source->size());
+        $model->mime_type = $this->verifyMimeType($this->source->mimeType());
+        $model->extension = $this->verifyExtension($this->source->extension());
+
+        $model->disk = $this->disk ?: $this->config['default_disk'];
+        $model->directory = $this->directory;
+        $model->filename = $this->generateFilename();
+
+        return $model;
+    }
+
+    /**
+     * Get a UrlGenerator instance for the media.
+     * @return UrlGeneratorInterface
+     */
+    protected function getUrlGenerator($file): UrlGeneratorInterface
+    {
+        return app('upload_file.url.factory')->create($file);
     }
 }

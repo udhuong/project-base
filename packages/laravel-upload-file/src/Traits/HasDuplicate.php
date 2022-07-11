@@ -2,6 +2,10 @@
 
 namespace Udhuong\LaravelUploadFile\Traits;
 
+use Illuminate\Support\Collection;
+use Udhuong\LaravelUploadFile\Exceptions\MediaUpload\FileExistsException;
+use Udhuong\LaravelUploadFile\FileUploader;
+
 trait HasDuplicate
 {
     /**
@@ -59,14 +63,31 @@ trait HasDuplicate
     }
 
     /**
-     * Overwrite existing files and update the existing media record.
+     * Decide what to do about duplicated files.
      *
-     * This will retain any existing associations.
-     *
-     * @return $this
+     * @throws FileExistsException If directory is not writable or file already exists at the destination and on_duplicate is set to 'error'
      */
-    public function onDuplicateUpdate(): self
+    private function handleDuplicate($file)
     {
-        return $this->setOnDuplicateBehavior(self::ON_DUPLICATE_UPDATE);
+        switch ($this->config['on_duplicate'] ?? FileUploader::ON_DUPLICATE_INCREMENT) {
+            case static::ON_DUPLICATE_ERROR:
+                throw FileExistsException::fileExists($this->getDiskPath($file));
+            case static::ON_DUPLICATE_REPLACE:
+                $this->deleteExistingFile($file);
+                break;
+            case static::ON_DUPLICATE_INCREMENT:
+            default:
+                $file->filename = $this->generateUniqueFilename($file);
+        }
+        return $file;
+    }
+
+    /**
+     * Delete the file on disk.
+     * @return void
+     */
+    private function deleteExistingFile($file): void
+    {
+        $this->filesystem->disk($file->disk)->delete($this->getDiskPath($file));
     }
 }
