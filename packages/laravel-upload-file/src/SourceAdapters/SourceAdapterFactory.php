@@ -33,11 +33,12 @@ class SourceAdapterFactory
     public function create($source): SourceAdapterInterface
     {
         $adapter = null;
-
         if ($source instanceof SourceAdapterInterface) {
             return $source;
         } elseif (is_object($source)) {
             $adapter = $this->adaptClass($source);
+        } elseif (is_resource($source)) {
+            $adapter = StreamResourceAdapter::class;
         } elseif (is_string($source)) {
             $adapter = $this->adaptString($source);
         }
@@ -45,7 +46,6 @@ class SourceAdapterFactory
         if ($adapter) {
             return new $adapter($source);
         }
-
         throw ConfigurationException::unrecognizedSource($source);
     }
 
