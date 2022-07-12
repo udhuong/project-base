@@ -17,6 +17,7 @@ use Udhuong\LaravelUploadFile\SourceAdapters\RawContentAdapter;
 use Udhuong\LaravelUploadFile\SourceAdapters\SourceAdapterFactory;
 use Udhuong\LaravelUploadFile\Traits\HasDuplicate;
 use Udhuong\LaravelUploadFile\Traits\HasFileName;
+use Udhuong\LaravelUploadFile\Traits\HasStrictType;
 use Udhuong\LaravelUploadFile\Traits\HasVerify;
 use Udhuong\LaravelUploadFile\UrlGenerators\UrlGeneratorInterface;
 
@@ -25,6 +26,7 @@ class FileUploader
     use HasDuplicate;
     use HasVerify;
     use HasFileName;
+    use HasStrictType;
 
     const ON_DUPLICATE_INCREMENT = 'increment';
     const ON_DUPLICATE_ERROR = 'error';
@@ -217,15 +219,6 @@ class FileUploader
         }
     }
 
-    public function getOptions(): array
-    {
-        $options = $this->options;
-        if (!isset($options['visibility'])) {
-            $options['visibility'] = $this->visibility;
-        }
-        return $options;
-    }
-
     private function getDiskPath($file)
     {
         $basename = $file->filename . '.' . $file->extension;
@@ -246,6 +239,7 @@ class FileUploader
         $model->size = $this->verifyFileSize($this->source->size());
         $model->mime_type = $this->verifyMimeType($this->source->mimeType());
         $model->extension = $this->verifyExtension($this->source->extension());
+        $model->aggregate_type = $this->inferAggregateType($model->mime_type, $model->extension);
 
         $model->disk = $this->disk ?: $this->config['default_disk'];
         $model->directory = $this->directory;
@@ -261,5 +255,45 @@ class FileUploader
     protected function getUrlGenerator($file): UrlGeneratorInterface
     {
         return app('upload_file.url.factory')->create($file);
+    }
+
+    /**
+     * Make the resulting file public (default behaviour)
+     * @return $this
+     */
+    public function makePublic(): self
+    {
+        $this->visibility = Filesystem::VISIBILITY_PUBLIC;
+        return $this;
+    }
+
+    /**
+     * Make the resulting file private
+     * @return $this
+     */
+    public function makePrivate(): self
+    {
+        $this->visibility = Filesystem::VISIBILITY_PRIVATE;
+        return $this;
+    }
+
+    /**
+     * Additional options to pass to the filesystem when uploading
+     * @param array $options
+     * @return $this
+     */
+    public function withOptions(array $options): self
+    {
+        $this->options = $options;
+        return $this;
+    }
+
+    public function getOptions(): array
+    {
+        $options = $this->options;
+        if (!isset($options['visibility'])) {
+            $options['visibility'] = $this->visibility;
+        }
+        return $options;
     }
 }

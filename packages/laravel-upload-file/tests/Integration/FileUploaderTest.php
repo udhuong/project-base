@@ -1,6 +1,7 @@
 <?php
 
 use Udhuong\LaravelUploadFile\FileUploader;
+use Udhuong\LaravelUploadFile\Stream;
 use Udhuong\LaravelUploadFile\Tests\TestCase;
 use Udhuong\LaravelUploadFile\Facades\FileUploader as Facade;
 
@@ -41,7 +42,7 @@ class FileUploaderTest extends TestCase
         $this->assertTrue($this->checkFileExists($file['disk'], $file['path']));
         $this->assertEquals('tmp', $file['disk']);
         $this->assertEquals('foo/bar.png', $file['path']);
-//        $this->assertEquals('image/png', $file['mine_type']);
+        $this->assertEquals('image/png', $file['mime_type']);
         $this->assertEquals(self::TEST_FILE_SIZE, $file['size']);
     }
 
@@ -60,12 +61,45 @@ class FileUploaderTest extends TestCase
         $this->assertTrue($this->checkFileExists($file['disk'], $file['path']));
         $this->assertEquals('tmp', $file['disk']);
         $this->assertEquals('foo/bar.png', $file['path']);
-        //        $this->assertEquals('image/png', $file['mine_type']);
+        $this->assertEquals('image/png', $file['mime_type']);
         $this->assertEquals(self::TEST_FILE_SIZE, $file['size']);
     }
 
-    protected function getUploader(): FileUploader
+    public function test_it_imports_http_stream_contents()
     {
-        return app('upload_file.uploader');
+        $this->useFilesystem('tmp');
+
+        $resource = fopen($this->remoteFilePath(), 'r');
+
+        $file = Facade::fromSource($resource)
+            ->toDestination('tmp', 'foo')
+            ->useFilename('bar')
+            ->upload();
+        $this->assertIsArray($file);
+        $this->assertTrue($this->checkFileExists($file['disk'], $file['path']));
+        $this->assertEquals('foo/bar.png', $file['path']);
+        $this->assertEquals('image/png', $file['mime_type']);
+        $this->assertEquals(self::TEST_FILE_SIZE, $file['size']);
+        $this->assertEquals('image', $file['aggregate_type']);
+    }
+
+    public function test_it_imports_stream_objects()
+    {
+        $this->useFilesystem('tmp');
+
+        $stream = new Stream(fopen($this->remoteFilePath(), 'r'));
+
+        $file = Facade::fromSource($stream)
+            ->toDestination('tmp', 'foo')
+            ->useFilename('bar')
+            ->upload();
+
+        $this->assertIsArray($file);
+        $this->assertTrue($this->checkFileExists($file['disk'], $file['path']));
+        $this->assertEquals('tmp', $file['disk']);
+        $this->assertEquals('foo/bar.png', $file['path']);
+        $this->assertEquals('image/png', $file['mime_type']);
+        $this->assertEquals(self::TEST_FILE_SIZE, $file['size']);
+        $this->assertEquals('image', $file['aggregate_type']);
     }
 }

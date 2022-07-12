@@ -6,6 +6,7 @@ use Dotenv\Dotenv;
 use Faker\Factory;
 use Illuminate\Filesystem\Filesystem;
 use Orchestra\Testbench\TestCase as BaseTestCase;
+use Udhuong\LaravelUploadFile\FileUploader;
 use Udhuong\LaravelUploadFile\UploadFileServiceProvider;
 
 class TestCase extends BaseTestCase
@@ -118,7 +119,7 @@ class TestCase extends BaseTestCase
 
     protected function remoteFilePath()
     {
-        return 'https://raw.githubusercontent.com/plank/laravel-mediable/master/tests/_data/plank.png';
+        return 'https://raw.githubusercontent.com/udhuong/project-base/master/packages/laravel-upload-file/tests/_data/plank.png';
     }
 
     protected function sampleFile()
@@ -133,5 +134,10 @@ class TestCase extends BaseTestCase
     protected function checkFileExists(string $disk,string $path): bool
     {
         return app('filesystem')->disk($disk)->has($path);
+    }
+
+    protected function getUploader(): FileUploader
+    {
+        return app('upload_file.uploader');
     }
 }

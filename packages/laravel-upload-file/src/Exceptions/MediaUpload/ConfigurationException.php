@@ -12,11 +12,6 @@ class ConfigurationException extends MediaUploadException
         return new static("Could not set adapter of class `{$class}`. Must implement `\Udhuong\LaravelUploadFile\SourceAdapters\SourceAdapterInterface`.");
     }
 
-    public static function cannotSetModel(string $class): self
-    {
-        return new static("Could not set `{$class}` as Media model class. Must extend `\Udhuong\LaravelUploadFile\Media`.");
-    }
-
     public static function noSourceProvided(): self
     {
         return new static('No source provided for upload.');
